@@ -42,7 +42,7 @@ export function parseM3U(content: string, countryCode?: string): Channel[] {
       }
 
       if (url && name) {
-        const id = `${tvgId || name}-${url.slice(-8)}`;
+        const id = `${countryCode ?? ""}-${tvgId || name}-${url.slice(-12)}`;
         channels.push({
           id,
           name,

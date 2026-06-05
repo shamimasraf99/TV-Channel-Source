@@ -1,14 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import {
-  FlatList,
-  Platform,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { FlatList, Platform, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChannelCard } from "@/components/ChannelCard";
+import { ChannelGridCard } from "@/components/ChannelGridCard";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useColors } from "@/hooks/useColors";
 
@@ -17,23 +11,15 @@ export default function FavoritesScreen() {
   const insets = useSafeAreaInsets();
   const { favorites } = useFavorites();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 34 + 84 : insets.bottom + 84;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: topPad + 12,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
-        <Text style={[styles.title, { color: colors.foreground }]}>Favorites</Text>
+      <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+        <Text style={[styles.title, { color: colors.foreground }]}>পছন্দের</Text>
         {favorites.length > 0 && (
           <Text style={[styles.count, { color: colors.mutedForeground }]}>
-            {favorites.length} channel{favorites.length !== 1 ? "s" : ""}
+            {favorites.length}টি চ্যানেল
           </Text>
         )}
       </View>
@@ -44,25 +30,21 @@ export default function FavoritesScreen() {
             <Ionicons name="heart-outline" size={36} color={colors.mutedForeground} />
           </View>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            No favorites yet
+            পছন্দের তালিকা খালি
           </Text>
           <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-            Tap the heart on any channel to save it here
+            যেকোনো চ্যানেলের হার্ট আইকনে ট্যাপ করে সেভ করুন
           </Text>
         </View>
       ) : (
         <FlatList
           data={favorites}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ChannelCard channel={item} showCountry />}
-          contentContainerStyle={[
-            styles.list,
-            {
-              paddingBottom:
-                Platform.OS === "web" ? 34 + 84 : insets.bottom + 84,
-            },
-          ]}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={[styles.gridContent, { paddingBottom: bottomPad }]}
           showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => <ChannelGridCard channel={item} />}
         />
       )}
     </View>
@@ -70,26 +52,20 @@ export default function FavoritesScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
+  root: { flex: 1 },
   header: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingBottom: 16,
-    borderBottomWidth: 1,
     gap: 4,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
   },
   count: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-  },
-  list: {
-    paddingTop: 8,
   },
   empty: {
     flex: 1,
@@ -115,5 +91,13 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 20,
+  },
+  row: {
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 12,
+  },
+  gridContent: {
+    paddingTop: 8,
   },
 });

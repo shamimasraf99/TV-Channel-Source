@@ -61,7 +61,7 @@ export const COUNTRIES: Country[] = [
 export const REGIONS = [...new Set(COUNTRIES.map((c) => c.region))];
 
 export function getStreamUrl(countryCode: string): string {
-  return `https://iptv-org.github.io/iptv/streams/${countryCode}.m3u`;
+  return `https://raw.githubusercontent.com/iptv-org/iptv/master/streams/${countryCode}.m3u`;
 }
 
 export function getCountryByCode(code: string): Country | undefined {

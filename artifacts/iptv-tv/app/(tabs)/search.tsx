@@ -10,12 +10,12 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChannelCard } from "@/components/ChannelCard";
+import { ChannelGridCard } from "@/components/ChannelGridCard";
 import { useColors } from "@/hooks/useColors";
-import { COUNTRIES, getStreamUrl } from "@/utils/countries";
-import { Channel, parseM3U, filterChannels } from "@/utils/m3u-parser";
+import { getStreamUrl } from "@/utils/countries";
+import { Channel, filterChannels, parseM3U } from "@/utils/m3u-parser";
 
-const SEARCH_COUNTRIES = ["us", "gb", "in", "fr", "de", "br", "jp", "au", "ca", "au"];
+const SOURCE_COUNTRIES = ["in", "pk", "us", "gb"];
 
 export default function SearchScreen() {
   const colors = useColors();
@@ -24,67 +24,43 @@ export default function SearchScreen() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const bottomPad = Platform.OS === "web" ? 34 + 84 : insets.bottom + 84;
 
   const loadChannels = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
-      const results: Channel[] = [];
-      const codes = SEARCH_COUNTRIES.slice(0, 4);
+      const all: Channel[] = [];
       await Promise.all(
-        codes.map(async (code) => {
+        SOURCE_COUNTRIES.slice(0, 3).map(async (code) => {
           try {
-            const res = await fetch(getStreamUrl(code), {
-              headers: { "Cache-Control": "max-age=3600" },
-            });
+            const res = await fetch(getStreamUrl(code));
             if (!res.ok) return;
             const text = await res.text();
-            const parsed = parseM3U(text, code);
-            results.push(...parsed);
-          } catch {
-          }
+            all.push(...parseM3U(text, code));
+          } catch {}
         })
       );
-      setChannels(results);
+      setChannels(all);
       setLoaded(true);
-    } catch {
-      setError("Failed to load channels");
-    } finally {
-      setLoading(false);
-    }
+    } catch {}
+    finally { setLoading(false); }
   }, []);
 
-  useEffect(() => {
-    loadChannels();
-  }, [loadChannels]);
+  useEffect(() => { loadChannels(); }, [loadChannels]);
 
   const filtered = query.trim() ? filterChannels(channels, query) : [];
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: topPad + 12,
-            backgroundColor: colors.background,
-            borderBottomColor: colors.border,
-          },
-        ]}
-      >
-        <Text style={[styles.title, { color: colors.foreground }]}>Search</Text>
-        <View
-          style={[
-            styles.searchBox,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
+      <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+        <Text style={[styles.title, { color: colors.foreground }]}>খুঁজুন</Text>
+        <View style={[styles.searchBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Ionicons name="search" size={16} color={colors.mutedForeground} />
           <TextInput
-            style={[styles.searchInput, { color: colors.foreground }]}
-            placeholder="Search channels..."
+            style={[styles.input, { color: colors.foreground }]}
+            placeholder="চ্যানেল খুঁজুন..."
             placeholderTextColor={colors.mutedForeground}
             value={query}
             onChangeText={setQuery}
@@ -93,7 +69,7 @@ export default function SearchScreen() {
             clearButtonMode="while-editing"
           />
           {query.length > 0 && (
-            <Text style={[styles.count, { color: colors.mutedForeground }]}>
+            <Text style={[styles.countText, { color: colors.mutedForeground }]}>
               {filtered.length}
             </Text>
           )}
@@ -103,35 +79,18 @@ export default function SearchScreen() {
       {loading && (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
-            Loading channel index...
-          </Text>
+          <Text style={[styles.hint, { color: colors.mutedForeground }]}>লোড হচ্ছে...</Text>
         </View>
       )}
 
-      {error && !loading && (
-        <View style={styles.center}>
-          <Ionicons name="wifi-outline" size={40} color={colors.mutedForeground} />
-          <Text style={[styles.errorText, { color: colors.mutedForeground }]}>
-            {error}
-          </Text>
-          <Text
-            style={[styles.retryText, { color: colors.primary }]}
-            onPress={loadChannels}
-          >
-            Retry
-          </Text>
-        </View>
-      )}
-
-      {!loading && !error && query.trim() === "" && loaded && (
+      {!loading && query.trim() === "" && (
         <View style={styles.center}>
           <Ionicons name="search-outline" size={48} color={colors.mutedForeground} />
           <Text style={[styles.hintTitle, { color: colors.foreground }]}>
-            Search {channels.length.toLocaleString()} channels
+            {loaded ? `${channels.length.toLocaleString()} চ্যানেল খুঁজুন` : "চ্যানেল লোড হচ্ছে..."}
           </Text>
-          <Text style={[styles.hintSub, { color: colors.mutedForeground }]}>
-            From US, UK, India, France, Germany and more
+          <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+            স্পোর্টস, সংবাদ, বিনোদন এবং আরও অনেক কিছু
           </Text>
         </View>
       )}
@@ -140,24 +99,22 @@ export default function SearchScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <ChannelCard channel={item} showCountry />}
-          contentContainerStyle={[
-            styles.list,
-            {
-              paddingBottom:
-                Platform.OS === "web" ? 34 + 84 : insets.bottom + 84,
-            },
-          ]}
+          numColumns={2}
+          columnWrapperStyle={styles.row}
+          contentContainerStyle={[styles.gridContent, { paddingBottom: bottomPad }]}
+          scrollEnabled={!!filtered.length}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           ListEmptyComponent={
             <View style={styles.center}>
               <Ionicons name="tv-outline" size={40} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                No channels match "{query}"
+              <Text style={[styles.hint, { color: colors.mutedForeground }]}>
+                "{query}" এর জন্য কোনো চ্যানেল পাওয়া যায়নি
               </Text>
             </View>
           }
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
+          renderItem={({ item }) => <ChannelGridCard channel={item} />}
         />
       )}
     </View>
@@ -165,35 +122,32 @@ export default function SearchScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
+  root: { flex: 1 },
   header: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 18,
+    paddingBottom: 14,
     gap: 10,
-    borderBottomWidth: 1,
   },
   title: {
-    fontSize: 28,
+    fontSize: 26,
     fontFamily: "Inter_700Bold",
     letterSpacing: -0.5,
   },
   searchBox: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 10,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 8,
   },
-  searchInput: {
+  input: {
     flex: 1,
     fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
-  count: {
+  countText: {
     fontSize: 13,
     fontFamily: "Inter_500Medium",
   },
@@ -204,37 +158,23 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 32,
   },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  errorText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
-  retryText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    marginTop: 8,
-  },
   hintTitle: {
     fontSize: 18,
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
   },
-  hintSub: {
+  hint: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 20,
   },
-  emptyText: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
+  row: {
+    paddingHorizontal: 16,
+    gap: 12,
+    marginBottom: 12,
   },
-  list: {
+  gridContent: {
     paddingTop: 8,
   },
 });

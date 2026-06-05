@@ -1,63 +1,73 @@
 const colors = {
   light: {
-    text: "#0a0a0f",
-    tint: "#3b82f6",
-
-    background: "#f8fafc",
-    foreground: "#0a0a0f",
-
-    card: "#ffffff",
-    cardForeground: "#0a0a0f",
-
-    primary: "#e11d48",
-    primaryForeground: "#ffffff",
-
-    secondary: "#f1f5f9",
-    secondaryForeground: "#1e293b",
-
-    muted: "#f1f5f9",
-    mutedForeground: "#64748b",
-
-    accent: "#3b82f6",
-    accentForeground: "#ffffff",
-
-    destructive: "#ef4444",
-    destructiveForeground: "#ffffff",
-
-    border: "#e2e8f0",
-    input: "#e2e8f0",
-
-    live: "#22c55e",
-  },
-  dark: {
     text: "#f8fafc",
-    tint: "#3b82f6",
+    tint: "#e11d48",
 
-    background: "#09090b",
+    background: "#09090d",
     foreground: "#f8fafc",
 
-    card: "#18181b",
+    card: "#111118",
     cardForeground: "#f8fafc",
 
     primary: "#e11d48",
     primaryForeground: "#ffffff",
 
-    secondary: "#27272a",
+    secondary: "#1c1c24",
     secondaryForeground: "#f8fafc",
 
-    muted: "#27272a",
+    muted: "#1c1c24",
     mutedForeground: "#71717a",
 
-    accent: "#3b82f6",
+    accent: "#e11d48",
     accentForeground: "#ffffff",
 
     destructive: "#ef4444",
     destructiveForeground: "#ffffff",
 
-    border: "#27272a",
-    input: "#27272a",
+    border: "#1e1e2a",
+    input: "#1e1e2a",
 
-    live: "#22c55e",
+    live: "#e11d48",
+    liveText: "#ffffff",
+    heroOverlay: "rgba(9,9,13,0.72)",
+    tabBar: "#0d0d12",
+    pill: "#1e1e2a",
+    pillActive: "#e11d48",
+  },
+  dark: {
+    text: "#f8fafc",
+    tint: "#e11d48",
+
+    background: "#09090d",
+    foreground: "#f8fafc",
+
+    card: "#111118",
+    cardForeground: "#f8fafc",
+
+    primary: "#e11d48",
+    primaryForeground: "#ffffff",
+
+    secondary: "#1c1c24",
+    secondaryForeground: "#f8fafc",
+
+    muted: "#1c1c24",
+    mutedForeground: "#71717a",
+
+    accent: "#e11d48",
+    accentForeground: "#ffffff",
+
+    destructive: "#ef4444",
+    destructiveForeground: "#ffffff",
+
+    border: "#1e1e2a",
+    input: "#1e1e2a",
+
+    live: "#e11d48",
+    liveText: "#ffffff",
+    heroOverlay: "rgba(9,9,13,0.72)",
+    tabBar: "#0d0d12",
+    pill: "#1e1e2a",
+    pillActive: "#e11d48",
   },
   radius: 12,
 } as const;
