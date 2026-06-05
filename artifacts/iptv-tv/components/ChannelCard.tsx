@@ -12,6 +12,7 @@ import {
 import { useFavorites } from "@/context/FavoritesContext";
 import { useColors } from "@/hooks/useColors";
 import { Channel, getLogoUrl } from "@/utils/m3u-parser";
+import { getLocalLogo } from "@/utils/logoMap";
 
 function ChannelInitials({ name }: { name: string }) {
   const initials = name
@@ -41,8 +42,9 @@ export function ChannelCard({ channel, showCountry }: Props) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const [imgError, setImgError] = useState(false);
   const favorited = isFavorite(channel.id);
+  const localLogo = getLocalLogo(channel.name);
   const logoUrl = getLogoUrl(channel);
-  const showImage = !!logoUrl && !imgError;
+  const showRemoteImage = !localLogo && !!logoUrl && !imgError;
 
   function handlePress() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -76,7 +78,9 @@ export function ChannelCard({ channel, showCountry }: Props) {
       onPress={handlePress}
     >
       <View style={styles.logoContainer}>
-        {showImage ? (
+        {localLogo ? (
+          <Image source={localLogo} style={styles.logo} resizeMode="contain" />
+        ) : showRemoteImage ? (
           <Image
             source={{ uri: logoUrl }}
             style={styles.logo}

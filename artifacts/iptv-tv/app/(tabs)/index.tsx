@@ -71,17 +71,27 @@ export default function HomeScreen() {
     return channels.filter((ch) => matchesCategory(ch.name, ch.group, selectedCategory));
   }, [channels, selectedCategory]);
 
+  const dedupe = useCallback((list: Channel[]) => {
+    const seen = new Set<string>();
+    return list.filter((ch) => {
+      const key = ch.url;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, []);
+
   const sportsChannels = useMemo(
-    () => channels.filter((ch) => matchesCategory(ch.name, ch.group, CATEGORIES[1])).slice(0, 12),
-    [channels]
+    () => dedupe(channels.filter((ch) => matchesCategory(ch.name, ch.group, CATEGORIES[1]))).slice(0, 12),
+    [channels, dedupe]
   );
   const banglaChannels = useMemo(
-    () => channels.filter((ch) => matchesCategory(ch.name, ch.group, CATEGORIES[3])).slice(0, 12),
-    [channels]
+    () => dedupe(channels.filter((ch) => matchesCategory(ch.name, ch.group, CATEGORIES[3]))).slice(0, 12),
+    [channels, dedupe]
   );
   const newsChannels = useMemo(
-    () => channels.filter((ch) => matchesCategory(ch.name, ch.group, CATEGORIES[4])).slice(0, 12),
-    [channels]
+    () => dedupe(channels.filter((ch) => matchesCategory(ch.name, ch.group, CATEGORIES[4]))).slice(0, 12),
+    [channels, dedupe]
   );
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;

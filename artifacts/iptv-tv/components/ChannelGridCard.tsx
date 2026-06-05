@@ -13,6 +13,7 @@ import {
 import { useFavorites } from "@/context/FavoritesContext";
 import { useColors } from "@/hooks/useColors";
 import { Channel, getLogoUrl } from "@/utils/m3u-parser";
+import { getLocalLogo } from "@/utils/logoMap";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -48,6 +49,7 @@ export function ChannelGridCard({ channel }: Props) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const [imgError, setImgError] = useState(false);
   const favorited = isFavorite(channel.id);
+  const localLogo = getLocalLogo(channel.name);
   const logoUrl = getLogoUrl(channel);
 
   function handlePress() {
@@ -68,7 +70,7 @@ export function ChannelGridCard({ channel }: Props) {
     toggleFavorite({ ...channel, logo: logoUrl });
   }
 
-  const showImage = !!logoUrl && !imgError;
+  const showRemoteImage = !localLogo && !!logoUrl && !imgError;
 
   return (
     <Pressable
@@ -103,7 +105,9 @@ export function ChannelGridCard({ channel }: Props) {
       </View>
 
       <View style={styles.logoContainer}>
-        {showImage ? (
+        {localLogo ? (
+          <Image source={localLogo} style={styles.logo} resizeMode="contain" />
+        ) : showRemoteImage ? (
           <Image
             source={{ uri: logoUrl }}
             style={styles.logo}

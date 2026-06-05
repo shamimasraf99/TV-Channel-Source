@@ -1,15 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
-  FlatList,
-  Image,
   ImageBackground,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -25,31 +23,40 @@ interface Props {
 
 export function HeroBanner({ onWatchNow }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
-  const flatRef = useRef<FlatList<(typeof HERO_ITEMS)[0]>>(null);
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
+  const scrollRef = useRef<ScrollView>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMounted = useRef(true);
 
-  const startTimer = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setActiveIndex((prev) => {
-        const next = (prev + 1) % HERO_ITEMS.length;
-        flatRef.current?.scrollToIndex({ index: next, animated: true });
-        return next;
-      });
-    }, 4000);
+  const advance = useCallback(() => {
+    if (!isMounted.current) return;
+    setActiveIndex((prev) => {
+      const next = (prev + 1) % HERO_ITEMS.length;
+      scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
+      return next;
+    });
   }, []);
 
+  const resetTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(advance, 4000);
+  }, [advance]);
+
   useEffect(() => {
-    startTimer();
+    isMounted.current = true;
+    resetTimer();
     return () => {
+      isMounted.current = false;
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [startTimer]);
+  }, [resetTimer]);
 
   function handleScroll(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    setActiveIndex(idx);
-    startTimer();
+    if (idx !== activeIndex) {
+      setActiveIndex(idx);
+      resetTimer();
+    }
   }
 
   function handleWatchNow(categoryKey: string) {
@@ -59,19 +66,40 @@ export function HeroBanner({ onWatchNow }: Props) {
 
   return (
     <View style={styles.container}>
-      <FlatList
-        ref={flatRef}
-        data={HERO_ITEMS}
-        keyExtractor={(item) => item.id}
+      <ScrollView
+        ref={scrollRef}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleScroll}
-        scrollEventThrottle={16}
-        renderItem={({ item }) => (
-          <HeroSlide item={item} onWatchNow={handleWatchNow} />
-        )}
-      />
+        scrollEventThrottle={32}
+      >
+        {HERO_ITEMS.map((item) => {
+          const hasImage = !!item.image && !imgErrors[item.id];
+          return (
+            <View key={item.id} style={styles.slide}>
+              {hasImage ? (
+                <ImageBackground
+                  source={{ uri: item.image }}
+                  style={styles.slideBg}
+                  resizeMode="cover"
+                  onError={() =>
+                    setImgErrors((prev) => ({ ...prev, [item.id]: true }))
+                  }
+                >
+                  <View style={styles.overlay} />
+                  <SlideContent item={item} onWatchNow={handleWatchNow} />
+                </ImageBackground>
+              ) : (
+                <View style={[styles.slideBg, styles.slideFallback]}>
+                  <SlideContent item={item} onWatchNow={handleWatchNow} />
+                </View>
+              )}
+            </View>
+          );
+        })}
+      </ScrollView>
+
       <View style={styles.dots}>
         {HERO_ITEMS.map((_, i) => (
           <View
@@ -87,59 +115,32 @@ export function HeroBanner({ onWatchNow }: Props) {
   );
 }
 
-function HeroSlide({
+function SlideContent({
   item,
   onWatchNow,
 }: {
   item: (typeof HERO_ITEMS)[0];
   onWatchNow: (cat: string) => void;
 }) {
-  const [imgError, setImgError] = useState(false);
-
-  const content = (
-    <LinearGradient
-      colors={["transparent", "rgba(9,9,13,0.85)", "#09090d"]}
-      locations={[0, 0.55, 1]}
-      style={styles.gradient}
-    >
-      <View style={styles.slideContent}>
-        <View style={styles.badge}>
-          <View style={styles.badgeDot} />
-          <Text style={styles.badgeText}>{item.badge}</Text>
-        </View>
-        <Text style={styles.title}>{item.title}</Text>
-        {item.subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={2}>
-            {item.subtitle}
-          </Text>
-        ) : null}
-        <Pressable
-          style={({ pressed }) => [styles.watchBtn, { opacity: pressed ? 0.8 : 1 }]}
-          onPress={() => onWatchNow(item.category)}
-        >
-          <Ionicons name="play" size={16} color="#09090d" />
-          <Text style={styles.watchBtnText}>এখন দেখুন</Text>
-        </Pressable>
-      </View>
-    </LinearGradient>
-  );
-
-  if (item.image && !imgError) {
-    return (
-      <ImageBackground
-        source={{ uri: item.image }}
-        style={styles.slide}
-        resizeMode="cover"
-        onError={() => setImgError(true)}
-      >
-        {content}
-      </ImageBackground>
-    );
-  }
-
   return (
-    <View style={[styles.slide, styles.slideFallback]}>
-      {content}
+    <View style={styles.slideContent}>
+      <View style={styles.badge}>
+        <View style={styles.badgeDot} />
+        <Text style={styles.badgeText}>{item.badge}</Text>
+      </View>
+      <Text style={styles.title}>{item.title}</Text>
+      {!!item.subtitle && (
+        <Text style={styles.subtitle} numberOfLines={2}>
+          {item.subtitle}
+        </Text>
+      )}
+      <Pressable
+        style={({ pressed }) => [styles.watchBtn, { opacity: pressed ? 0.8 : 1 }]}
+        onPress={() => onWatchNow(item.category)}
+      >
+        <Ionicons name="play" size={16} color="#09090d" />
+        <Text style={styles.watchBtnText}>এখন দেখুন</Text>
+      </Pressable>
     </View>
   );
 }
@@ -152,19 +153,24 @@ const styles = StyleSheet.create({
   slide: {
     width: SCREEN_WIDTH,
     height: HERO_HEIGHT,
-    backgroundColor: "#14141e",
+  },
+  slideBg: {
+    width: SCREEN_WIDTH,
+    height: HERO_HEIGHT,
+    justifyContent: "flex-end",
   },
   slideFallback: {
     backgroundColor: "#0d1117",
   },
-  gradient: {
-    flex: 1,
-    justifyContent: "flex-end",
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(9,9,13,0.55)",
   },
   slideContent: {
     paddingHorizontal: 18,
     paddingBottom: 28,
     gap: 8,
+    position: "relative",
   },
   badge: {
     flexDirection: "row",
