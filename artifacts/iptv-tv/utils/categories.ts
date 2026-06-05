@@ -6,22 +6,42 @@ export interface Category {
 
 export const CATEGORIES: Category[] = [
   { key: "all", label: "সব চ্যানেল", keywords: [] },
-  { key: "sports", label: "স্পোর্টস", keywords: ["sport", "cricket", "football", "soccer", "tennis", "ipl"] },
-  { key: "ipl", label: "আইপিএল ২০২৬", keywords: ["ipl", "cricket", "cricket gold", "t sports", "willow", "star sports"] },
-  { key: "news", label: "সংবাদ", keywords: ["news", "সংবাদ", "খবর", "newsx", "ndtv", "republic", "times now", "cnn", "bbc"] },
-  { key: "entertainment", label: "বিনোদন", keywords: ["entertainment", "zee", "sony", "star", "colors", "sun", "drama"] },
-  { key: "movies", label: "সিনেমা", keywords: ["movie", "cinema", "film", "hbo", "movies"] },
+  {
+    key: "sports",
+    label: "স্পোর্টস",
+    keywords: ["sport", "cricket", "football", "soccer", "tennis", "live sports", "world cup", "ipl", "tsports", "t sports", "willow", "star sport", "sony sport", "dd sport", "ptv sport"],
+  },
+  {
+    key: "ipl",
+    label: "আইপিএল ২০২৬",
+    keywords: ["ipl", "cricket gold", "t sports", "willow", "star sports", "sony sports", "world cup 2026"],
+  },
+  {
+    key: "bangla",
+    label: "বাংলা",
+    keywords: ["bangla", "bangladesh", "atn", "ntv", "jamuna", "btv", "channel i", "rtv", "desh", "ekhon", "boishakhi", "sa tv", "kaler"],
+  },
+  {
+    key: "news",
+    label: "সংবাদ",
+    keywords: ["news", "bangla news", "সংবাদ", "newsx", "ndtv", "republic", "times now", "cnn", "bbc", "al jazeera"],
+  },
+  {
+    key: "movies",
+    label: "সিনেমা",
+    keywords: ["movie", "cinema", "film", "bangla movie", "kolkata", "hbo", "movies now"],
+  },
 ];
 
 export function mapGroupToBengali(group: string): string {
   const g = group.toLowerCase();
-  if (g.includes("sport") || g.includes("cricket")) return "স্পোর্টস";
-  if (g.includes("news")) return "সংবাদ";
-  if (g.includes("entertainment")) return "বিনোদন";
-  if (g.includes("movie") || g.includes("film") || g.includes("cinema")) return "সিনেমা";
+  if (g.includes("sport") || g.includes("cricket") || g.includes("live sport")) return "স্পোর্টস";
+  if (g.includes("bangla news") || g.includes("news")) return "সংবাদ";
+  if (g.includes("bangla movie") || g.includes("movie") || g.includes("kolkata bangla movie")) return "সিনেমা";
+  if (g.includes("bangla") || g.includes("kolkata bangla")) return "বাংলা";
   if (g.includes("music")) return "সঙ্গীত";
+  if (g.includes("religi") || g.includes("islamic") || g.includes("islam")) return "ধর্মীয়";
   if (g.includes("kids") || g.includes("child")) return "শিশু";
-  if (g.includes("religi") || g.includes("islam") || g.includes("spiritual")) return "ধর্মীয়";
   return "সাধারণ";
 }
 
@@ -50,10 +70,10 @@ export const HERO_ITEMS = [
   },
   {
     id: "hero3",
-    badge: "লাইভ নিউজ",
-    title: "সর্বশেষ সংবাদ",
-    subtitle: "দেশ ও বিশ্বের সর্বশেষ সংবাদ সরাসরি দেখুন সেরা চ্যানেলগুলোতে।",
+    badge: "বাংলা চ্যানেল",
+    title: "সেরা বাংলা চ্যানেল",
+    subtitle: "এটিএন বাংলা, এনটিভি, যমুনা টিভি সহ সকল বাংলা চ্যানেল একসাথে।",
     image: "",
-    category: "news",
+    category: "bangla",
   },
 ];

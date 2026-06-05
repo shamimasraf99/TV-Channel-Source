@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useFavorites } from "@/context/FavoritesContext";
 import { useColors } from "@/hooks/useColors";
-import { Channel } from "@/utils/m3u-parser";
+import { Channel, getLogoUrl } from "@/utils/m3u-parser";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = (SCREEN_WIDTH - 48) / 2;
@@ -21,11 +21,34 @@ interface Props {
   channel: Channel;
 }
 
+function ChannelInitials({ name }: { name: string }) {
+  const initials = name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
+  const colors = [
+    "#1d4ed8", "#7c3aed", "#be185d", "#0f766e",
+    "#b45309", "#15803d", "#9333ea", "#0369a1",
+  ];
+  const colorIndex =
+    name.charCodeAt(0) % colors.length;
+  const bg = colors[colorIndex];
+
+  return (
+    <View style={[styles.initialsBox, { backgroundColor: bg }]}>
+      <Text style={styles.initialsText}>{initials}</Text>
+    </View>
+  );
+}
+
 export function ChannelGridCard({ channel }: Props) {
   const colors = useColors();
   const { isFavorite, toggleFavorite } = useFavorites();
   const [imgError, setImgError] = useState(false);
   const favorited = isFavorite(channel.id);
+  const logoUrl = getLogoUrl(channel);
 
   function handlePress() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -34,7 +57,7 @@ export function ChannelGridCard({ channel }: Props) {
       params: {
         url: channel.url,
         name: channel.name,
-        logo: channel.logo,
+        logo: logoUrl,
         group: channel.group,
       },
     });
@@ -42,8 +65,10 @@ export function ChannelGridCard({ channel }: Props) {
 
   function handleFavorite() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    toggleFavorite(channel);
+    toggleFavorite({ ...channel, logo: logoUrl });
   }
+
+  const showImage = !!logoUrl && !imgError;
 
   return (
     <Pressable
@@ -59,35 +84,34 @@ export function ChannelGridCard({ channel }: Props) {
       onPress={handlePress}
       testID={`channel-grid-${channel.id}`}
     >
-      <View style={styles.liveBadge}>
-        <View style={styles.liveDot} />
-        <Text style={styles.liveText}>লাইভ</Text>
+      <View style={styles.topRow}>
+        <View style={styles.liveBadge}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveText}>লাইভ</Text>
+        </View>
+        <Pressable
+          onPress={handleFavorite}
+          hitSlop={8}
+          style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        >
+          <Ionicons
+            name={favorited ? "heart" : "heart-outline"}
+            size={14}
+            color={favorited ? "#e11d48" : "#71717a"}
+          />
+        </Pressable>
       </View>
 
-      <Pressable
-        style={[styles.favBtn, { opacity: favorited ? 1 : 0.5 }]}
-        onPress={handleFavorite}
-        hitSlop={6}
-      >
-        <Ionicons
-          name={favorited ? "heart" : "heart-outline"}
-          size={14}
-          color={favorited ? "#e11d48" : "#fff"}
-        />
-      </Pressable>
-
       <View style={styles.logoContainer}>
-        {channel.logo && !imgError ? (
+        {showImage ? (
           <Image
-            source={{ uri: channel.logo }}
+            source={{ uri: logoUrl }}
             style={styles.logo}
             resizeMode="contain"
             onError={() => setImgError(true)}
           />
         ) : (
-          <View style={styles.logoFallback}>
-            <Ionicons name="tv-outline" size={28} color="#444" />
-          </View>
+          <ChannelInitials name={channel.name} />
         )}
       </View>
 
@@ -108,17 +132,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 10,
     gap: 8,
-    position: "relative",
+  },
+  topRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   liveBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    alignSelf: "flex-start",
   },
   liveDot: {
-    width: 8,
-    height: 8,
+    width: 7,
+    height: 7,
     borderRadius: 4,
     backgroundColor: "#e11d48",
   },
@@ -128,35 +155,36 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     letterSpacing: 0.3,
   },
-  favBtn: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    zIndex: 1,
-  },
   logoContainer: {
     alignItems: "center",
     justifyContent: "center",
     height: 64,
+    borderRadius: 8,
+    overflow: "hidden",
+    backgroundColor: "#1a1a24",
   },
   logo: {
     width: "100%",
-    height: 64,
-    borderRadius: 6,
-    backgroundColor: "#1a1a24",
+    height: "100%",
+    borderRadius: 8,
   },
-  logoFallback: {
+  initialsBox: {
     width: "100%",
-    height: 64,
-    backgroundColor: "#1a1a24",
-    borderRadius: 6,
+    height: "100%",
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: 8,
+  },
+  initialsText: {
+    color: "#fff",
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 1,
   },
   name: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 17,
   },
 });

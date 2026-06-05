@@ -1,0 +1,2 @@
+- [StreamTV IPTV data sources](streamtv-sources.md) — iptv-org M3U has no logos; use PiratesTv community playlist as primary source for logos + Bengali channels.
+- [StreamTV expo-av player](streamtv-player.md) — must use STATIC expo-av import; dynamic import causes silent failures on native.

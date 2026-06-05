@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { ResizeMode, Video } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -26,11 +27,11 @@ export default function PlayerScreen() {
   }>();
 
   const { isFavorite, toggleFavorite } = useFavorites();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
   const [logoError, setLogoError] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const controlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const videoRef = useRef<Video>(null);
 
   const channelId = `${name}-${(url ?? "").slice(-8)}`;
   const favorited = isFavorite(channelId);
@@ -59,63 +60,72 @@ export default function PlayerScreen() {
       logo: logo ?? "",
       group: group ?? "",
       tvgId: "",
+      channelId: "",
     });
   }
 
   return (
     <View style={styles.root}>
       <StatusBar hidden />
+
       <Pressable style={styles.videoArea} onPress={showControls}>
         {Platform.OS === "web" ? (
-          <WebVideoPlayer
+          <WebPlayer
             url={url ?? ""}
-            onLoad={() => setLoading(false)}
-            onError={() => {
-              setLoading(false);
-              setError(
-                "This stream may not be available in the browser. Scan the QR code to watch on your phone."
-              );
-            }}
+            onLoad={() => setStatus("playing")}
+            onError={() => setStatus("error")}
           />
         ) : (
-          <NativeVideoPlayer
-            url={url ?? ""}
-            onLoad={() => setLoading(false)}
-            onError={() => {
-              setLoading(false);
-              setError("Stream unavailable. Try another channel.");
+          <Video
+            ref={videoRef}
+            source={{ uri: url ?? "" }}
+            style={styles.video}
+            resizeMode={ResizeMode.CONTAIN}
+            shouldPlay
+            isLooping={false}
+            useNativeControls={false}
+            onLoad={() => setStatus("playing")}
+            onError={() => setStatus("error")}
+            onPlaybackStatusUpdate={(s) => {
+              if (s.isLoaded && !s.isBuffering && status === "loading") {
+                setStatus("playing");
+              }
             }}
           />
         )}
 
-        {loading && !error && (
-          <View style={styles.overlay}>
+        {status === "loading" && (
+          <View style={styles.overlay} pointerEvents="none">
             <ActivityIndicator size="large" color="#fff" />
-            <Text style={styles.loadingText}>Loading stream...</Text>
+            <Text style={styles.overlayText}>স্ট্রিম লোড হচ্ছে...</Text>
           </View>
         )}
 
-        {error && (
+        {status === "error" && (
           <View style={styles.overlay}>
-            <Ionicons name="alert-circle-outline" size={48} color="#fff" />
-            <Text style={styles.errorTitle}>Stream Unavailable</Text>
-            <Text style={styles.errorText}>{error}</Text>
+            <Ionicons name="alert-circle-outline" size={52} color="#fff" />
+            <Text style={styles.errorTitle}>স্ট্রিম পাওয়া যাচ্ছে না</Text>
+            <Text style={styles.errorSub}>
+              {Platform.OS === "web"
+                ? "এই চ্যানেলটি ব্রাউজারে চলছে না। মোবাইলে Expo Go দিয়ে দেখুন।"
+                : "এই চ্যানেলটি এই মুহূর্তে উপলব্ধ নেই। অন্য চ্যানেল চেষ্টা করুন।"}
+            </Text>
             <Pressable style={styles.backBtn} onPress={() => router.back()}>
-              <Text style={styles.backBtnText}>Go Back</Text>
+              <Text style={styles.backBtnText}>ফিরে যান</Text>
             </Pressable>
           </View>
         )}
       </Pressable>
 
-      {controlsVisible && !error && (
-        <View style={[styles.controls]} pointerEvents="box-none">
+      {controlsVisible && status !== "error" && (
+        <View style={styles.controls} pointerEvents="box-none">
           <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
             <Pressable
               onPress={() => router.back()}
               style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
-              hitSlop={8}
+              hitSlop={12}
             >
-              <Ionicons name="chevron-down" size={26} color="#fff" />
+              <Ionicons name="chevron-down" size={28} color="#fff" />
             </Pressable>
 
             <View style={styles.channelInfo}>
@@ -127,17 +137,17 @@ export default function PlayerScreen() {
                   onError={() => setLogoError(true)}
                 />
               ) : (
-                <View style={styles.channelLogoFallback}>
-                  <Ionicons name="tv" size={18} color="#fff" />
-                </View>
+                <ChannelInitials name={name ?? "TV"} />
               )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.channelName} numberOfLines={1}>
                   {name}
                 </Text>
                 <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveText}>LIVE</Text>
+                  <View style={[styles.liveDot, { backgroundColor: status === "playing" ? "#22c55e" : "#f59e0b" }]} />
+                  <Text style={[styles.liveText, { color: status === "playing" ? "#22c55e" : "#f59e0b" }]}>
+                    {status === "playing" ? "লাইভ" : "লোড হচ্ছে..."}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -145,7 +155,7 @@ export default function PlayerScreen() {
             <Pressable
               onPress={handleFavorite}
               style={({ pressed }) => [styles.iconBtn, { opacity: pressed ? 0.6 : 1 }]}
-              hitSlop={8}
+              hitSlop={12}
             >
               <Ionicons
                 name={favorited ? "heart" : "heart-outline"}
@@ -156,7 +166,7 @@ export default function PlayerScreen() {
           </View>
 
           <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
-            <Text style={styles.groupText}>{group}</Text>
+            <Text style={styles.groupLabel}>{group}</Text>
           </View>
         </View>
       )}
@@ -164,32 +174,22 @@ export default function PlayerScreen() {
   );
 }
 
-function WebVideoPlayer({
-  url,
-  onLoad,
-  onError,
-}: {
-  url: string;
-  onLoad: () => void;
-  onError: () => void;
-}) {
-  const videoEl = React.createElement("video" as any, {
-    src: url,
-    autoPlay: true,
-    controls: true,
-    style: {
-      width: "100%",
-      height: "100%",
-      objectFit: "contain",
-      backgroundColor: "#000",
-    },
-    onCanPlay: onLoad,
-    onError: onError,
-  });
-  return <View style={styles.videoArea}>{videoEl}</View>;
+function ChannelInitials({ name }: { name: string }) {
+  const initials = name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+  const colorList = ["#1d4ed8", "#7c3aed", "#be185d", "#0f766e", "#b45309"];
+  const bg = colorList[name.charCodeAt(0) % colorList.length];
+  return (
+    <View style={[styles.channelLogoFallback, { backgroundColor: bg }]}>
+      <Text style={styles.initialsText}>{initials}</Text>
+    </View>
+  );
 }
 
-function NativeVideoPlayer({
+function WebPlayer({
   url,
   onLoad,
   onError,
@@ -198,54 +198,22 @@ function NativeVideoPlayer({
   onLoad: () => void;
   onError: () => void;
 }) {
-  const [mod, setMod] = useState<{
-    Video: any;
-    ResizeMode: any;
-  } | null>(null);
-  const [importFailed, setImportFailed] = useState(false);
-  const videoRef = useRef<any>(null);
-
-  useEffect(() => {
-    import("expo-av")
-      .then((m) => {
-        setMod({ Video: m.Video, ResizeMode: m.ResizeMode });
-      })
-      .catch(() => {
-        setImportFailed(true);
-        onError();
-      });
-  }, []);
-
-  if (importFailed) {
-    return (
-      <View style={styles.videoArea}>
-        <Ionicons name="tv-outline" size={40} color="#555" />
-      </View>
-    );
-  }
-
-  if (!mod) {
-    return (
-      <View style={styles.videoArea}>
-        <ActivityIndicator color="#fff" />
-      </View>
-    );
-  }
-
-  const { Video, ResizeMode } = mod;
-
   return (
-    <Video
-      ref={videoRef}
-      source={{ uri: url }}
-      style={styles.nativeVideo}
-      resizeMode={ResizeMode.CONTAIN}
-      shouldPlay
-      isLooping
-      useNativeControls={false}
-      onLoad={onLoad}
-      onError={onError}
-    />
+    <View style={styles.videoArea}>
+      {React.createElement("video" as any, {
+        src: url,
+        autoPlay: true,
+        controls: true,
+        style: {
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          backgroundColor: "#000",
+        },
+        onCanPlay: onLoad,
+        onError: onError,
+      })}
+    </View>
   );
 }
 
@@ -260,20 +228,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  nativeVideo: {
+  video: {
     width: "100%",
     height: "100%",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(0,0,0,0.8)",
     alignItems: "center",
     justifyContent: "center",
-    gap: 12,
+    gap: 14,
     paddingHorizontal: 32,
   },
-  loadingText: {
-    color: "#fff",
+  overlayText: {
+    color: "rgba(255,255,255,0.8)",
     fontSize: 15,
     fontFamily: "Inter_400Regular",
   },
@@ -283,19 +251,19 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     textAlign: "center",
   },
-  errorText: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 14,
+  errorSub: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 13,
     fontFamily: "Inter_400Regular",
     textAlign: "center",
     lineHeight: 20,
   },
   backBtn: {
     backgroundColor: "#e11d48",
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginTop: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 11,
+    borderRadius: 24,
+    marginTop: 6,
   },
   backBtnText: {
     color: "#fff",
@@ -312,8 +280,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingBottom: 14,
+    backgroundColor: "rgba(0,0,0,0.6)",
   },
   channelInfo: {
     flex: 1,
@@ -323,18 +291,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   channelLogo: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 8,
     backgroundColor: "#222",
   },
   channelLogoFallback: {
-    width: 40,
-    height: 40,
+    width: 42,
+    height: 42,
     borderRadius: 8,
-    backgroundColor: "#333",
     alignItems: "center",
     justifyContent: "center",
+  },
+  initialsText: {
+    color: "#fff",
+    fontSize: 15,
+    fontFamily: "Inter_700Bold",
   },
   channelName: {
     color: "#fff",
@@ -344,20 +316,18 @@ const styles = StyleSheet.create({
   liveBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginTop: 2,
+    gap: 5,
+    marginTop: 3,
   },
   liveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#22c55e",
   },
   liveText: {
-    color: "#22c55e",
     fontSize: 11,
     fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   iconBtn: {
     width: 44,
@@ -366,12 +336,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   bottomBar: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
     paddingTop: 12,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
-  groupText: {
-    color: "rgba(255,255,255,0.6)",
+  groupLabel: {
+    color: "rgba(255,255,255,0.55)",
     fontSize: 13,
     fontFamily: "Inter_400Regular",
   },

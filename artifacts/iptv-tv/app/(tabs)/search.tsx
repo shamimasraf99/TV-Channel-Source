@@ -12,10 +12,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChannelGridCard } from "@/components/ChannelGridCard";
 import { useColors } from "@/hooks/useColors";
-import { getStreamUrl } from "@/utils/countries";
+import { ALL_SOURCES } from "@/utils/sources";
 import { Channel, filterChannels, parseM3U } from "@/utils/m3u-parser";
-
-const SOURCE_COUNTRIES = ["in", "pk", "us", "gb"];
 
 export default function SearchScreen() {
   const colors = useColors();
@@ -33,12 +31,12 @@ export default function SearchScreen() {
     try {
       const all: Channel[] = [];
       await Promise.all(
-        SOURCE_COUNTRIES.slice(0, 3).map(async (code) => {
+        ALL_SOURCES.map(async (source) => {
           try {
-            const res = await fetch(getStreamUrl(code));
+            const res = await fetch(source.url);
             if (!res.ok) return;
             const text = await res.text();
-            all.push(...parseM3U(text, code));
+            all.push(...parseM3U(text, source.countryCode));
           } catch {}
         })
       );
@@ -69,9 +67,7 @@ export default function SearchScreen() {
             clearButtonMode="while-editing"
           />
           {query.length > 0 && (
-            <Text style={[styles.countText, { color: colors.mutedForeground }]}>
-              {filtered.length}
-            </Text>
+            <Text style={[styles.countText, { color: colors.mutedForeground }]}>{filtered.length}</Text>
           )}
         </View>
       </View>
@@ -79,7 +75,7 @@ export default function SearchScreen() {
       {loading && (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.hint, { color: colors.mutedForeground }]}>লোড হচ্ছে...</Text>
+          <Text style={[styles.hint, { color: colors.mutedForeground }]}>চ্যানেল লোড হচ্ছে...</Text>
         </View>
       )}
 
@@ -87,10 +83,10 @@ export default function SearchScreen() {
         <View style={styles.center}>
           <Ionicons name="search-outline" size={48} color={colors.mutedForeground} />
           <Text style={[styles.hintTitle, { color: colors.foreground }]}>
-            {loaded ? `${channels.length.toLocaleString()} চ্যানেল খুঁজুন` : "চ্যানেল লোড হচ্ছে..."}
+            {loaded ? `${channels.length.toLocaleString()} টি চ্যানেল খুঁজুন` : "লোড হচ্ছে..."}
           </Text>
           <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-            স্পোর্টস, সংবাদ, বিনোদন এবং আরও অনেক কিছু
+            বাংলা, স্পোর্টস, সংবাদ এবং আরও অনেক কিছু
           </Text>
         </View>
       )}
@@ -110,7 +106,7 @@ export default function SearchScreen() {
             <View style={styles.center}>
               <Ionicons name="tv-outline" size={40} color={colors.mutedForeground} />
               <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-                "{query}" এর জন্য কোনো চ্যানেল পাওয়া যায়নি
+                "{query}" এর জন্য কিছু পাওয়া যায়নি
               </Text>
             </View>
           }
@@ -123,58 +119,14 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: {
-    paddingHorizontal: 18,
-    paddingBottom: 14,
-    gap: 10,
-  },
-  title: {
-    fontSize: 26,
-    fontFamily: "Inter_700Bold",
-    letterSpacing: -0.5,
-  },
-  searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  countText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingHorizontal: 32,
-  },
-  hintTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "center",
-  },
-  hint: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  row: {
-    paddingHorizontal: 16,
-    gap: 12,
-    marginBottom: 12,
-  },
-  gridContent: {
-    paddingTop: 8,
-  },
+  header: { paddingHorizontal: 18, paddingBottom: 14, gap: 10 },
+  title: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
+  searchBox: { flexDirection: "row", alignItems: "center", borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, gap: 8 },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  countText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingHorizontal: 32 },
+  hintTitle: { fontSize: 18, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+  hint: { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  row: { paddingHorizontal: 16, gap: 12, marginBottom: 12 },
+  gridContent: { paddingTop: 8 },
 });

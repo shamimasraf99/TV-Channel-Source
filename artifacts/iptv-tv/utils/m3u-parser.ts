@@ -5,18 +5,41 @@ export interface Channel {
   logo: string;
   group: string;
   tvgId: string;
+  channelId: string;
   countryCode?: string;
 }
 
 function extractAttribute(line: string, attr: string): string {
-  const regex = new RegExp(`${attr}="([^"]*)"`, "i");
-  const match = line.match(regex);
-  return match ? match[1] : "";
+  const regex = new RegExp(`${attr}="([^"]*)"`, "gi");
+  let lastValue = "";
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(line)) !== null) {
+    if (match[1]) lastValue = match[1];
+  }
+  if (!lastValue) {
+    const firstMatch = line.match(new RegExp(`${attr}="([^"]*)"`, "i"));
+    return firstMatch ? firstMatch[1] : "";
+  }
+  return lastValue;
+}
+
+function extractBaseChannelId(tvgId: string): string {
+  return tvgId.split("@")[0].trim();
+}
+
+export function getLogoUrl(channel: Channel): string {
+  if (channel.logo) return channel.logo;
+  if (channel.channelId) {
+    return `https://raw.githubusercontent.com/iptv-org/database/master/images/${channel.channelId}.png`;
+  }
+  return "";
 }
 
 export function parseM3U(content: string, countryCode?: string): Channel[] {
   const lines = content.split("\n").map((l) => l.trim());
   const channels: Channel[] = [];
+  const seenIds = new Set<string>();
+  let idx = 0;
 
   let i = 0;
   while (i < lines.length) {
@@ -28,6 +51,7 @@ export function parseM3U(content: string, countryCode?: string): Channel[] {
       const logo = extractAttribute(line, "tvg-logo");
       const group = extractAttribute(line, "group-title");
       const tvgId = extractAttribute(line, "tvg-id");
+      const channelId = extractBaseChannelId(tvgId);
 
       let url = "";
       let j = i + 1;
@@ -42,7 +66,13 @@ export function parseM3U(content: string, countryCode?: string): Channel[] {
       }
 
       if (url && name) {
-        const id = `${countryCode ?? ""}-${tvgId || name}-${url.slice(-12)}`;
+        const safeId = (channelId || name).replace(/[^a-zA-Z0-9._-]/g, "_");
+        const urlSuffix = url.replace(/[^a-zA-Z0-9]/g, "").slice(-12);
+        let id = `${countryCode ?? "x"}-${safeId}-${urlSuffix}`;
+        if (seenIds.has(id)) {
+          id = `${id}-${++idx}`;
+        }
+        seenIds.add(id);
         channels.push({
           id,
           name,
@@ -50,6 +80,7 @@ export function parseM3U(content: string, countryCode?: string): Channel[] {
           logo,
           group: group || "General",
           tvgId,
+          channelId,
           countryCode,
         });
       }
