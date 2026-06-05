@@ -29,25 +29,35 @@ export default function HomeScreen() {
   const loadChannels = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const all: Channel[] = [];
-    let anyLoaded = false;
-    for (const source of ALL_SOURCES) {
+
+    const buckets: Channel[][] = ALL_SOURCES.map(() => []);
+    let resolved = 0;
+
+    const fetches = ALL_SOURCES.map(async (source, i) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
       try {
-        const res = await fetch(source.url);
-        if (!res.ok) continue;
+        const res = await fetch(source.url, { signal: controller.signal });
+        clearTimeout(timer);
+        if (!res.ok) return;
         const text = await res.text();
-        const parsed = parseM3U(text, source.countryCode);
-        all.push(...parsed);
-        anyLoaded = true;
-        if (all.length > 0 && source === ALL_SOURCES[0]) {
-          setChannels([...all]);
-        }
-      } catch {}
-    }
-    if (!anyLoaded) {
+        buckets[i] = parseM3U(text, source.countryCode);
+        resolved++;
+        const merged = ([] as Channel[]).concat(...buckets);
+        setChannels([...merged]);
+        if (resolved === 1) setLoading(false);
+      } catch {
+        clearTimeout(timer);
+      }
+    });
+
+    await Promise.all(fetches);
+
+    const merged = ([] as Channel[]).concat(...buckets);
+    if (merged.length === 0) {
       setError("চ্যানেল লোড হয়নি। পুনরায় চেষ্টা করুন।");
     } else {
-      setChannels([...all]);
+      setChannels([...merged]);
     }
     setLoading(false);
   }, []);

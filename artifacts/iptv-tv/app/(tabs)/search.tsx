@@ -28,22 +28,32 @@ export default function SearchScreen() {
 
   const loadChannels = useCallback(async () => {
     setLoading(true);
-    try {
-      const all: Channel[] = [];
-      await Promise.all(
-        ALL_SOURCES.map(async (source) => {
-          try {
-            const res = await fetch(source.url);
-            if (!res.ok) return;
-            const text = await res.text();
-            all.push(...parseM3U(text, source.countryCode));
-          } catch {}
-        })
-      );
-      setChannels(all);
-      setLoaded(true);
-    } catch {}
-    finally { setLoading(false); }
+    const buckets: Channel[][] = ALL_SOURCES.map(() => []);
+    let first = true;
+
+    await Promise.all(
+      ALL_SOURCES.map(async (source, i) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        try {
+          const res = await fetch(source.url, { signal: controller.signal });
+          clearTimeout(timer);
+          if (!res.ok) return;
+          const text = await res.text();
+          buckets[i] = parseM3U(text, source.countryCode);
+          const merged = ([] as Channel[]).concat(...buckets);
+          setChannels([...merged]);
+          if (first) { first = false; setLoading(false); setLoaded(true); }
+        } catch {
+          clearTimeout(timer);
+        }
+      })
+    );
+
+    const merged = ([] as Channel[]).concat(...buckets);
+    setChannels([...merged]);
+    setLoaded(true);
+    setLoading(false);
   }, []);
 
   useEffect(() => { loadChannels(); }, [loadChannels]);
