@@ -14,6 +14,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AdminConfigProvider } from "@/context/AdminConfigContext";
 import { FavoritesProvider } from "@/context/FavoritesContext";
 
 SplashScreen.preventAutoHideAsync();
@@ -31,6 +32,13 @@ function RootLayoutNav() {
           headerShown: false,
           presentation: "fullScreenModal",
           animation: "slide_from_bottom",
+        }}
+      />
+      <Stack.Screen
+        name="admin"
+        options={{
+          headerShown: false,
+          animation: "slide_from_right",
         }}
       />
     </Stack>
@@ -59,9 +67,11 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <KeyboardProvider>
-              <FavoritesProvider>
-                <RootLayoutNav />
-              </FavoritesProvider>
+              <AdminConfigProvider>
+                <FavoritesProvider>
+                  <RootLayoutNav />
+                </FavoritesProvider>
+              </AdminConfigProvider>
             </KeyboardProvider>
           </GestureHandlerRootView>
         </QueryClientProvider>

@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -11,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useFavorites } from "@/context/FavoritesContext";
+import { useAdminConfig } from "@/context/AdminConfigContext";
 import { useColors } from "@/hooks/useColors";
 import { Channel, getLogoUrl } from "@/utils/m3u-parser";
 import { getLocalLogo } from "@/utils/logoMap";
@@ -33,8 +34,7 @@ function ChannelInitials({ name }: { name: string }) {
     "#1d4ed8", "#7c3aed", "#be185d", "#0f766e",
     "#b45309", "#15803d", "#9333ea", "#0369a1",
   ];
-  const colorIndex =
-    name.charCodeAt(0) % colors.length;
+  const colorIndex = name.charCodeAt(0) % colors.length;
   const bg = colors[colorIndex];
 
   return (
@@ -47,10 +47,19 @@ function ChannelInitials({ name }: { name: string }) {
 export function ChannelGridCard({ channel }: Props) {
   const colors = useColors();
   const { isFavorite, toggleFavorite } = useFavorites();
+  const { config } = useAdminConfig();
   const [imgError, setImgError] = useState(false);
   const favorited = isFavorite(channel.id);
+
+  const adminOverrideLogo = useMemo(() => {
+    if (config.channelIcons.length === 0) return null;
+    const nameLower = channel.name.toLowerCase();
+    const match = config.channelIcons.find((ic) => nameLower.includes(ic.pattern.toLowerCase()));
+    return match?.logoUrl ?? null;
+  }, [config.channelIcons, channel.name]);
+
   const localLogo = getLocalLogo(channel.name);
-  const logoUrl = getLogoUrl(channel);
+  const logoUrl = adminOverrideLogo ?? getLogoUrl(channel);
 
   function handlePress() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -70,7 +79,8 @@ export function ChannelGridCard({ channel }: Props) {
     toggleFavorite({ ...channel, logo: logoUrl });
   }
 
-  const showRemoteImage = !localLogo && !!logoUrl && !imgError;
+  const useAdminImg = !!adminOverrideLogo && !imgError;
+  const showRemoteImage = !useAdminImg && !localLogo && !!logoUrl && !imgError;
 
   return (
     <Pressable
@@ -105,7 +115,14 @@ export function ChannelGridCard({ channel }: Props) {
       </View>
 
       <View style={styles.logoContainer}>
-        {localLogo ? (
+        {useAdminImg ? (
+          <Image
+            source={{ uri: adminOverrideLogo! }}
+            style={styles.logo}
+            resizeMode="contain"
+            onError={() => setImgError(true)}
+          />
+        ) : localLogo ? (
           <Image source={localLogo} style={styles.logo} resizeMode="contain" />
         ) : showRemoteImage ? (
           <Image

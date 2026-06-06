@@ -4,6 +4,16 @@ export interface Category {
   keywords: string[];
 }
 
+export interface HeroItem {
+  id: string;
+  badge: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  localImage?: number;
+  category: string;
+}
+
 export const CATEGORIES: Category[] = [
   { key: "all", label: "সব চ্যানেল", keywords: [] },
   {
@@ -51,7 +61,17 @@ export function matchesCategory(name: string, group: string, category: Category)
   return category.keywords.some((kw) => combined.includes(kw.toLowerCase()));
 }
 
-export const HERO_ITEMS = [
+export const HERO_ITEMS: HeroItem[] = [
+  {
+    id: "hero_fifa",
+    badge: "ফিফা বিশ্বকাপ ২০২৬",
+    title: "ফিফা বিশ্বকাপ ২০২৬",
+    subtitle: "বিশ্বের সেরা ফুটবলাররা মাঠে নামছেন। সরাসরি দেখুন সব ম্যাচ।",
+    image: "",
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    localImage: require("@/assets/images/fifa_wc_2026.jpg"),
+    category: "sports",
+  },
   {
     id: "hero1",
     badge: "লাইভ স্পোর্টস",
@@ -62,14 +82,6 @@ export const HERO_ITEMS = [
   },
   {
     id: "hero2",
-    badge: "লাইভ ক্রিকেট",
-    title: "আইপিএল ২০২৬ সরাসরি",
-    subtitle: "প্রিমিয়াম চ্যানেলে ক্রিকেটের সেরা লড়াই দেখুন একদম বিনামূল্যে।",
-    image: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Cricket_field_in_Colombo.jpg/1280px-Cricket_field_in_Colombo.jpg",
-    category: "ipl",
-  },
-  {
-    id: "hero3",
     badge: "বাংলা চ্যানেল",
     title: "সেরা বাংলা চ্যানেল",
     subtitle: "এটিএন বাংলা, এনটিভি, যমুনা টিভি সহ সকল বাংলা চ্যানেল একসাথে।",
