@@ -16,12 +16,14 @@ export default function AdminLayout() {
   const [unlocked, setUnlocked] = useState(false);
   const [input, setInput] = useState("");
   const [error, setError] = useState(false);
+  const [attempts, setAttempts] = useState(0);
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
   if (isLoading) return <View style={styles.root} />;
 
   if (!unlocked) {
+    const locked = attempts >= 5;
     return (
       <View style={[styles.root, { paddingTop: insets.top + 32 }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
@@ -45,28 +47,34 @@ export default function AdminLayout() {
             placeholder="••••"
             placeholderTextColor="#444"
             autoFocus
+            editable={!locked}
           />
 
-          {error && (
+          {error && !locked && (
             <Text style={styles.errorText}>ভুল পিন। আবার চেষ্টা করুন।</Text>
+          )}
+          {locked && (
+            <Text style={styles.errorText}>অনেকবার ভুল হয়েছে। অ্যাপ রিস্টার্ট করুন।</Text>
           )}
 
           <Pressable
-            style={({ pressed }) => [styles.unlockBtn, { opacity: pressed ? 0.8 : 1 }]}
+            style={({ pressed }) => [styles.unlockBtn, { opacity: pressed || locked ? 0.6 : 1 }]}
             onPress={() => {
+              if (locked) return;
               if (input === config.pin) {
                 setUnlocked(true);
                 setError(false);
+                setAttempts(0);
               } else {
                 setError(true);
+                setAttempts((a) => a + 1);
                 setInput("");
               }
             }}
+            disabled={locked}
           >
             <Text style={styles.unlockBtnText}>প্রবেশ করুন</Text>
           </Pressable>
-
-          <Text style={styles.pinHint}>ডিফল্ট পিন: 1234</Text>
         </View>
       </View>
     );
@@ -105,11 +113,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   pinInputError: { borderColor: "#e11d48" },
-  errorText: { color: "#e11d48", fontSize: 13, fontFamily: "Inter_400Regular" },
+  errorText: { color: "#e11d48", fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center" },
   unlockBtn: {
     width: "100%", backgroundColor: "#e11d48", borderRadius: 12,
     paddingVertical: 14, alignItems: "center", marginTop: 4,
   },
   unlockBtnText: { color: "#fff", fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  pinHint: { color: "#444", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 4 },
 });

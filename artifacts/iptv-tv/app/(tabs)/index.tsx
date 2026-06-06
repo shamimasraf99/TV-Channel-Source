@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -35,8 +34,21 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<Category>(CATEGORIES[0]);
-  const [menuVisible, setMenuVisible] = useState(false);
-  const sourcesRef = useRef<StreamSource[]>(ALL_SOURCES);
+
+  // Hidden admin access: 7 rapid taps on StreamTV title
+  const tapCountRef = useRef(0);
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleTitleTap() {
+    tapCountRef.current += 1;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = setTimeout(() => { tapCountRef.current = 0; }, 1800);
+    if (tapCountRef.current >= 7) {
+      tapCountRef.current = 0;
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+      router.push("/admin");
+    }
+  }
 
   const activeSources: StreamSource[] = useMemo(() => {
     if (config.sourcesEnabled && config.sources.length > 0) {
@@ -54,61 +66,52 @@ export default function HomeScreen() {
     return HERO_ITEMS;
   }, [config.bannersEnabled, config.banners]);
 
+  const sourcesRef = useRef(activeSources);
+  useEffect(() => { sourcesRef.current = activeSources; }, [activeSources]);
+
   const loadChannels = useCallback(async () => {
     setLoading(true);
     setError(null);
     const sources = sourcesRef.current;
-
     const buckets: Channel[][] = sources.map(() => []);
     let resolved = 0;
 
-    const fetches = sources.map(async (source, i) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 8000);
-      try {
-        const res = await fetch(source.url, { signal: controller.signal });
-        clearTimeout(timer);
-        if (!res.ok) return;
-        const text = await res.text();
-        buckets[i] = parseM3U(text, source.countryCode);
-        resolved++;
-        const merged = ([] as Channel[]).concat(...buckets);
-        setChannels([...merged]);
-        if (resolved === 1) setLoading(false);
-      } catch {
-        clearTimeout(timer);
-      }
-    });
-
-    await Promise.all(fetches);
+    await Promise.all(
+      sources.map(async (source, i) => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 8000);
+        try {
+          const res = await fetch(source.url, { signal: controller.signal });
+          clearTimeout(timer);
+          if (!res.ok) return;
+          const text = await res.text();
+          buckets[i] = parseM3U(text, source.countryCode);
+          resolved++;
+          setChannels([...([] as Channel[]).concat(...buckets)]);
+          if (resolved === 1) setLoading(false);
+        } catch {
+          clearTimeout(timer);
+        }
+      })
+    );
 
     const merged = ([] as Channel[]).concat(...buckets);
-    if (merged.length === 0) {
-      setError("চ্যানেল লোড হয়নি। পুনরায় চেষ্টা করুন।");
-    } else {
-      setChannels([...merged]);
-    }
+    if (merged.length === 0) setError("চ্যানেল লোড হয়নি। পুনরায় চেষ্টা করুন।");
+    else setChannels([...merged]);
     setLoading(false);
   }, []);
 
-  useEffect(() => {
-    sourcesRef.current = activeSources;
-    loadChannels();
-  }, [activeSources, loadChannels]);
+  useEffect(() => { loadChannels(); }, [loadChannels]);
+
+  const dedupe = useCallback((list: Channel[]) => {
+    const seen = new Set<string>();
+    return list.filter((ch) => { if (seen.has(ch.url)) return false; seen.add(ch.url); return true; });
+  }, []);
 
   const filtered = useMemo(() => {
     if (selectedCategory.key === "all") return channels;
     return channels.filter((ch) => matchesCategory(ch.name, ch.group, selectedCategory));
   }, [channels, selectedCategory]);
-
-  const dedupe = useCallback((list: Channel[]) => {
-    const seen = new Set<string>();
-    return list.filter((ch) => {
-      if (seen.has(ch.url)) return false;
-      seen.add(ch.url);
-      return true;
-    });
-  }, []);
 
   const sportsChannels = useMemo(
     () => dedupe(channels.filter((ch) => matchesCategory(ch.name, ch.group, CATEGORIES[1]))).slice(0, 12),
@@ -129,9 +132,12 @@ export default function HomeScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 8, backgroundColor: colors.background }]}>
-        <Text style={[styles.appName, { color: colors.primary }]}>StreamTV</Text>
-        <Pressable onPress={() => setMenuVisible(true)} hitSlop={8}>
-          <Ionicons name="menu" size={26} color={colors.foreground} />
+        {/* 7 rapid taps → Admin Panel (hidden access) */}
+        <Pressable onPress={handleTitleTap} hitSlop={6}>
+          <Text style={[styles.appName, { color: colors.primary }]}>StreamTV</Text>
+        </Pressable>
+        <Pressable onPress={loadChannels} hitSlop={8}>
+          <Ionicons name="refresh-outline" size={22} color={colors.mutedForeground} />
         </Pressable>
       </View>
 
@@ -192,50 +198,24 @@ export default function HomeScreen() {
           renderItem={({ item }) => <ChannelGridCard channel={item} />}
         />
       )}
-
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}
-      >
-        <Pressable style={styles.menuOverlay} onPress={() => setMenuVisible(false)}>
-          <View style={styles.menuBox}>
-            <Text style={styles.menuTitle}>StreamTV</Text>
-            <Pressable
-              style={styles.menuItem}
-              onPress={() => { setMenuVisible(false); router.push("/admin"); }}
-            >
-              <Ionicons name="shield-checkmark-outline" size={20} color="#e11d48" />
-              <Text style={styles.menuItemText}>Admin Panel</Text>
-              <Ionicons name="chevron-forward" size={16} color="#444" />
-            </Pressable>
-            <Pressable style={styles.menuItem} onPress={() => { setMenuVisible(false); loadChannels(); }}>
-              <Ionicons name="refresh-outline" size={20} color="#71717a" />
-              <Text style={styles.menuItemText}>চ্যানেল রিফ্রেশ</Text>
-            </Pressable>
-          </View>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
 
 function AdsInjector({ code }: { code: string }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const divRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (!ref.current) return;
-    ref.current.innerHTML = code;
-    const scripts = ref.current.querySelectorAll("script");
-    scripts.forEach((oldScript) => {
-      const newScript = document.createElement("script");
-      Array.from(oldScript.attributes).forEach((attr) => newScript.setAttribute(attr.name, attr.value));
-      newScript.textContent = oldScript.textContent;
-      oldScript.replaceWith(newScript);
+    if (!divRef.current) return;
+    divRef.current.innerHTML = code;
+    divRef.current.querySelectorAll("script").forEach((old) => {
+      const s = document.createElement("script");
+      Array.from(old.attributes).forEach((a) => s.setAttribute(a.name, a.value));
+      s.textContent = old.textContent;
+      old.replaceWith(s);
     });
   }, [code]);
   if (Platform.OS !== "web") return null;
-  return <div ref={ref as any} style={{ width: "100%", overflow: "hidden" }} />;
+  return <div ref={divRef as any} style={{ width: "100%", overflow: "hidden" }} />;
 }
 
 function CategoryPills({ selected, onSelect, bg }: { selected: Category; onSelect: (c: Category) => void; bg: string }) {
@@ -303,9 +283,4 @@ const styles = StyleSheet.create({
   row: { paddingHorizontal: 16, gap: 12, marginBottom: 12 },
   gridContent: { paddingTop: 4 },
   emptyText: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center", marginTop: 32 },
-  menuOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-start", alignItems: "flex-end", paddingTop: 80, paddingRight: 16 },
-  menuBox: { backgroundColor: "#111118", borderRadius: 14, borderWidth: 1, borderColor: "#1e1e2a", minWidth: 220, overflow: "hidden" },
-  menuTitle: { color: "#71717a", fontSize: 12, fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  menuItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingVertical: 14, borderTopWidth: 1, borderTopColor: "#1e1e2a" },
-  menuItemText: { flex: 1, color: "#fff", fontSize: 15, fontFamily: "Inter_500Medium" },
 });
